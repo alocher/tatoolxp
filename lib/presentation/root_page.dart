@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:tatoolxp/presentation/login_signup_page.dart';
 import 'package:tatoolxp/middleware/authentication.dart';
 import 'package:tatoolxp/presentation/module_screen.dart';
+import 'package:tatoolxp/models/tatool_user.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class RootPage extends StatefulWidget {
@@ -22,7 +23,7 @@ enum AuthStatus {
 
 class _RootPageState extends State<RootPage> {
   AuthStatus authStatus = AuthStatus.NOT_DETERMINED;
-  String _userId = "";
+  TatoolUser _user;
 
   @override
   void initState() {
@@ -30,10 +31,10 @@ class _RootPageState extends State<RootPage> {
     widget.auth.getCurrentUser().then((user) {
       setState(() {
         if (user != null) {
-          _userId = user?.uid;
+          _user = user;
         }
         authStatus =
-            user?.uid == null ? AuthStatus.NOT_LOGGED_IN : AuthStatus.LOGGED_IN;
+            user?.userId == null ? AuthStatus.NOT_LOGGED_IN : AuthStatus.LOGGED_IN;
       });
     });
   }
@@ -41,18 +42,19 @@ class _RootPageState extends State<RootPage> {
   void _onLoggedIn() {
     widget.auth.getCurrentUser().then((user) {
       setState(() {
-        _userId = user.uid.toString();
+        if (user != null) {
+          _user = user;
+        }
+        authStatus =
+            user?.userId == null ? AuthStatus.NOT_LOGGED_IN : AuthStatus.LOGGED_IN;
       });
-    });
-    setState(() {
-      authStatus = AuthStatus.LOGGED_IN;
     });
   }
 
   void _onSignedOut() {
     setState(() {
       authStatus = AuthStatus.NOT_LOGGED_IN;
-      _userId = "";
+      _user = null;
     });
   }
 
@@ -78,10 +80,10 @@ class _RootPageState extends State<RootPage> {
         );
         break;
       case AuthStatus.LOGGED_IN:
-        if (_userId.length > 0 && _userId != null) {
+        if (_user?.userId != null && _user.userId.length > 0) {
           return ModuleScreen(
             notificationPlugin: widget.notificationPlugin,
-            userId: _userId,
+            user: _user,
             auth: widget.auth,
             onSignedOut: _onSignedOut,
           );

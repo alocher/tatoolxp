@@ -55,6 +55,7 @@ flutter:
   assets:
   - assets/icon/tatoolxp_launcher_icon.png
   - assets/tatool_logo.png
+  - assets/tatool_hint_add_module.gif
 
   # To add assets to your application, add an assets section, like this:
   # assets:

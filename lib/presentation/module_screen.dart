@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_redux/flutter_redux.dart';
+import 'package:tatoolxp/models/tatool_user.dart';
 import 'package:tatoolxp/models/app_state.dart';
 import 'package:tatoolxp/actions/actions.dart';
 import 'package:tatoolxp/middleware/authentication.dart';
@@ -14,13 +15,13 @@ class ModuleScreen extends StatefulWidget {
   final FlutterLocalNotificationsPlugin notificationPlugin;
   final BaseAuth auth;
   final VoidCallback onSignedOut;
-  final String userId;
+  final TatoolUser user;
 
   ModuleScreen(
       {Key key,
       @required this.notificationPlugin,
       this.auth,
-      this.userId,
+      this.user,
       this.onSignedOut})
       : super(key: key);
   @override
@@ -46,12 +47,47 @@ class _ModuleScreenState extends State<ModuleScreen> {
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(
           title: Text('Tatool XP'),
-          actions: <Widget>[
-            IconButton(
-              icon: Icon(Icons.power_settings_new),
-              onPressed: _signOut,
-            )
-          ],
+        ),
+        endDrawer: Drawer(
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: <Widget>[
+              new UserAccountsDrawerHeader(
+                accountName: new Text('Tatool ID: ' + widget.user.tatoolId,
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                accountEmail: Text(widget.user.email),
+                currentAccountPicture: CircleAvatar(
+                  child: new LayoutBuilder(builder: (context, constraint) {
+                    return new Icon(
+                      Icons.account_circle,
+                      size: constraint.biggest.height,
+                      color: Colors.red,
+                    );
+                  }),
+                  backgroundColor: Colors.white,
+                ),
+              ),
+              ListTile(
+                leading: Icon(Icons.power_settings_new),
+                title: Text('Logout'),
+                onTap: () async {
+                  Navigator.of(context).pop();
+                  bool logout = await _confirmLogoutDialog(context);
+                  if (logout) {
+                    _signOut();
+                  }
+                },
+              ),
+              Divider(),
+              ListTile(
+                leading: Icon(Icons.cancel),
+                title: Text('Close'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+            ],
+          ),
         ),
         body: LayoutBuilder(
           builder: (context, constraints) => SafeArea(
@@ -59,12 +95,25 @@ class _ModuleScreenState extends State<ModuleScreen> {
                   color: Colors.white,
                   child: StoreConnector<AppState, ModuleViewModel>(
                     onInit: (store) {
-                      store.dispatch(LoadModules(widget.userId));
+                      store.dispatch(LoadModules(widget.user.userId));
                     },
                     converter: (store) => ModuleViewModel.fromStore(store),
                     builder: (context, viewModel) => (viewModel.loading)
                         ? LoadingIndicator()
-                        : content(viewModel),
+                        : Stack(
+                            children: <Widget>[
+                              viewModel.modules.length == 0
+                                  ? Positioned(
+                                      top: constraints.maxHeight - 160,
+                                      left: constraints.maxWidth - 250,
+                                      child: Image.asset(
+                                          'assets/tatool_hint_add_module.gif'),
+                                      width: 170,
+                                      height: 140,
+                                    )
+                                  : content(viewModel),
+                            ],
+                          ),
                   ),
                 ),
               ),
@@ -73,7 +122,8 @@ class _ModuleScreenState extends State<ModuleScreen> {
           onPressed: () async {
             String invitationCode = await _addModuleDialog(context);
             if (!(invitationCode?.isEmpty ?? false)) {
-              StoreProvider.of<AppState>(context).dispatch(AddModule(widget.userId, invitationCode));
+              StoreProvider.of<AppState>(context)
+                  .dispatch(AddModule(widget.user.userId, invitationCode));
             }
           },
           child: Icon(
@@ -90,7 +140,7 @@ class _ModuleScreenState extends State<ModuleScreen> {
             key: new Key(vm.modules[index].moduleId),
             direction: DismissDirection.horizontal,
             onDismissed: (DismissDirection direction) {
-              vm.deleteModule(widget.userId, index);
+              vm.deleteModule(widget.user.userId, index);
             },
             confirmDismiss: (DismissDirection direction) async {
               return await _deleteModuleDialog(context);
@@ -125,7 +175,9 @@ class _ModuleScreenState extends State<ModuleScreen> {
                       context,
                       new MaterialPageRoute(
                           builder: (context) => TatoolWebView(
-                              moduleId: vm.modules[index].moduleId)));
+                                moduleId: vm.modules[index].moduleId,
+                                tatoolId: widget.user.tatoolId,
+                              )));
                 } else {
                   _alertDialog(context);
                 }
@@ -151,7 +203,7 @@ class _ModuleScreenState extends State<ModuleScreen> {
           ),
           actions: <Widget>[
             OutlineButton(
-              child: Text('OK'),
+              child: Text('OK', style: TextStyle(color: Colors.black)),
               onPressed: () {
                 Navigator.of(context).pop();
               },
@@ -169,30 +221,36 @@ class _ModuleScreenState extends State<ModuleScreen> {
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Add Module'),
-          content: SingleChildScrollView(
-            child: ListBody(
+        return SingleChildScrollView(
+          child: AlertDialog(
+            title: Text('Add Module'),
+            content: ListBody(
               children: <Widget>[
                 Text('Enter your Invitation Code:'),
-                TextField(autofocus: true, keyboardType: TextInputType.number, maxLength: 8, controller: myController,),
+                TextField(
+                  autofocus: true,
+                  keyboardType: TextInputType.number,
+                  maxLength: 8,
+                  controller: myController,
+                ),
               ],
             ),
+            actions: <Widget>[
+              OutlineButton(
+                child:
+                    const Text('CANCEL', style: TextStyle(color: Colors.black)),
+                onPressed: () {
+                  Navigator.pop(context, '');
+                },
+              ),
+              OutlineButton(
+                child: const Text('OK', style: TextStyle(color: Colors.black)),
+                onPressed: () {
+                  Navigator.pop(context, myController.text);
+                },
+              )
+            ],
           ),
-          actions: <Widget>[
-            OutlineButton(
-              child: const Text('CANCEL'),
-              onPressed: () {
-                Navigator.pop(context, '');
-              },
-            ),
-            OutlineButton(
-              child: const Text('OK'),
-              onPressed: () {
-                Navigator.pop(context, myController.text);
-              },
-            )
-          ],
         );
       },
     );
@@ -208,13 +266,40 @@ class _ModuleScreenState extends State<ModuleScreen> {
           content: const Text('Are you sure you want to delete this Module?'),
           actions: <Widget>[
             OutlineButton(
-              child: const Text('NO'),
+              child: const Text('NO', style: TextStyle(color: Colors.black)),
               onPressed: () {
                 Navigator.pop(context, false);
               },
             ),
             OutlineButton(
-              child: const Text('YES'),
+              child: const Text('YES', style: TextStyle(color: Colors.black)),
+              onPressed: () {
+                Navigator.pop(context, true);
+              },
+            )
+          ],
+        );
+      },
+    );
+  }
+
+  Future<bool> _confirmLogoutDialog(BuildContext context) async {
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Logout'),
+          content: const Text('Are you sure you want to log out?'),
+          actions: <Widget>[
+            OutlineButton(
+              child: const Text('NO', style: TextStyle(color: Colors.black)),
+              onPressed: () {
+                Navigator.pop(context, false);
+              },
+            ),
+            OutlineButton(
+              child: const Text('YES', style: TextStyle(color: Colors.black)),
               onPressed: () {
                 Navigator.pop(context, true);
               },
@@ -260,15 +345,22 @@ class _ModuleScreenState extends State<ModuleScreen> {
 
 class TatoolWebView extends StatelessWidget {
   final String moduleId;
+  final String tatoolId;
 
-  TatoolWebView({Key key, @required this.moduleId}) : super(key: key);
+  TatoolWebView({Key key, @required this.moduleId, @required this.tatoolId})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    final String url = 'https://www.tatool-web.com/#/public/' +
+        this.moduleId +
+        '?extid=' +
+        this.tatoolId;
+    print(url);
+
     return Container(
         child: WebView(
-      initialUrl:
-          'https://www.tatool-web.com/#/public/' + this.moduleId + '?extid=666',
+      initialUrl: url,
       javascriptMode: JavascriptMode.unrestricted,
       javascriptChannels: Set()
         ..add(JavascriptChannel(

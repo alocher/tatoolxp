@@ -136,10 +136,10 @@ class _LoginSignUpPageState extends State<LoginSignUpPage> {
         return AlertDialog(
           title: new Text("Verify your account"),
           content:
-              new Text("Link to verify account has been sent to your email"),
+              new Text("A link to verify your account has been sent to your email."),
           actions: <Widget>[
-            new FlatButton(
-              child: new Text("Dismiss"),
+            new OutlineButton(
+              child: Text('OK', style: TextStyle(color: Colors.black)),
               onPressed: () {
                 _changeFormToLogin();
                 Navigator.of(context).pop();
