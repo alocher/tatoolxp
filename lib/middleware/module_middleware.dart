@@ -1,16 +1,23 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:redux/redux.dart';
 import 'package:tatoolxp/models/app_state.dart';
 import 'package:tatoolxp/actions/actions.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:tatoolxp/models/module.dart';
+import 'package:tatoolxp/models/notification.dart';
+import 'package:tatoolxp/models/schedule.dart';
+
+
+final _random = new Random();
 
 List<Middleware<AppState>> createModuleMiddleware() {
   final initModule = _initModule();
   final loadModules = _loadModules();
   final deleteModule = _deleteModule();
   final addModule = _addModule();
+  
 
   return [
     TypedMiddleware<AppState, StartModule>(initModule),
@@ -100,8 +107,11 @@ Future<List<Module>> _dbAddModule(String userId, String invitationCode) async {
     return null;
   }
 
+  List<Notification> notifications = _createNotifications(invitationCode, Schedule.fromMap(Map<String, dynamic>.from(moduleSnapshot.data['schedule'])));
   moduleSnapshot.data['invitationCode'] = invitationCode;
+  moduleSnapshot.data['notifications'] = notifications.map((note) => note.toMap()).toList();
   Module module = Module.fromMap(moduleSnapshot.data);
+  print(module.toString());
 
   final DocumentReference userRef =
       Firestore.instance.collection('users').document(userId);
@@ -144,4 +154,52 @@ Future<List<Module>> _dbDeleteModule(String userId, int index) async {
         .map((snapshot) => Module.fromMap(Map<String, dynamic>.from(snapshot)))
         .toList());
   });
+}
+
+List<Notification> _createNotifications(String invitationCode, Schedule schedule) {
+  List<Notification> notifications = [];
+  
+  if (schedule.scheduleType == 'daily') {
+    notifications = _createDailyNotifications(invitationCode, schedule);
+    //print(notifications);
+  }
+  return notifications;
+}
+
+List<Notification> _createDailyNotifications(String invitationCode, Schedule schedule) {
+  List<Notification> notifications = [];
+  bool isDone = false;
+  int numDays = 0;
+  DateTime currentDate = new DateTime.now();
+  int validTime = schedule.endTime - schedule.startTime;
+  int validTimeBySlot = validTime ~/ schedule.numNotifications;
+  int notificationCounter = 0;
+
+  while(!isDone) {
+    currentDate = currentDate.add(Duration(days:1));
+    if (schedule.scheduleWeekdays.contains((currentDate.weekday))) {
+      numDays = numDays + 1;
+      int previousHour = 0;
+      for(int i = 0; i < schedule.numNotifications; i++) {
+        notificationCounter++;
+         int slotStartTime;
+        if (i == 0) {
+          slotStartTime = schedule.startTime + (i * validTimeBySlot);
+        } else {
+          slotStartTime = max(schedule.startTime + (i * validTimeBySlot), previousHour + schedule.intervalHours);
+        }
+
+        int hour = slotStartTime + _random.nextInt((slotStartTime + validTimeBySlot) - slotStartTime);
+        int minute = _random.nextInt(60);
+        Notification note = Notification(notificationId: int.parse(invitationCode) + notificationCounter, notificationTime: DateTime(currentDate.year, currentDate.month, currentDate.day, hour, minute) , notificationMessage: 'Time to do your Tatool Module!');
+        notifications.add(note);
+        previousHour = hour;
+      }
+    }
+
+    if (numDays == schedule.scheduleNumDays) {
+      isDone = true;
+    }
+  }
+  return notifications;
 }
