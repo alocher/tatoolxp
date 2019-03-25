@@ -2,22 +2,26 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:redux/redux.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:tatoolxp/models/app_state.dart';
 import 'package:tatoolxp/actions/actions.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:tatoolxp/models/module.dart';
 import 'package:tatoolxp/models/notification.dart';
 import 'package:tatoolxp/models/schedule.dart';
 
-
 final _random = new Random();
 
-List<Middleware<AppState>> createModuleMiddleware() {
+FlutterLocalNotificationsPlugin notificationPlugin;
+
+List<Middleware<AppState>> createModuleMiddleware(
+    FlutterLocalNotificationsPlugin plugin) {
+  notificationPlugin = plugin;
+
   final initModule = _initModule();
   final loadModules = _loadModules();
   final deleteModule = _deleteModule();
   final addModule = _addModule();
-  
 
   return [
     TypedMiddleware<AppState, StartModule>(initModule),
@@ -76,7 +80,6 @@ Middleware<AppState> _deleteModule() {
 Middleware<AppState> _initModule() {
   return (Store<AppState> store, action, NextDispatcher next) {
     Future.delayed(new Duration(seconds: 5), () {
-      print('run');
       store.dispatch(Actions.HideWaitIndicator);
     });
     next(action);
@@ -107,11 +110,16 @@ Future<List<Module>> _dbAddModule(String userId, String invitationCode) async {
     return null;
   }
 
-  List<Notification> notifications = _createNotifications(invitationCode, Schedule.fromMap(Map<String, dynamic>.from(moduleSnapshot.data['schedule'])));
+  List<Notification> notifications = _createNotifications(
+      invitationCode,
+      Schedule.fromMap(
+          Map<String, dynamic>.from(moduleSnapshot.data['schedule'])));
   moduleSnapshot.data['invitationCode'] = invitationCode;
-  moduleSnapshot.data['notifications'] = notifications.map((note) => note.toMap()).toList();
+  moduleSnapshot.data['notifications'] =
+      notifications.map((note) => note.toMap()).toList();
   Module module = Module.fromMap(moduleSnapshot.data);
-  print(module.toString());
+
+  await _scheduleNotifications(notifications);
 
   final DocumentReference userRef =
       Firestore.instance.collection('users').document(userId);
@@ -156,17 +164,18 @@ Future<List<Module>> _dbDeleteModule(String userId, int index) async {
   });
 }
 
-List<Notification> _createNotifications(String invitationCode, Schedule schedule) {
+List<Notification> _createNotifications(
+    String invitationCode, Schedule schedule) {
   List<Notification> notifications = [];
-  
+
   if (schedule.scheduleType == 'daily') {
     notifications = _createDailyNotifications(invitationCode, schedule);
-    //print(notifications);
   }
   return notifications;
 }
 
-List<Notification> _createDailyNotifications(String invitationCode, Schedule schedule) {
+List<Notification> _createDailyNotifications(
+    String invitationCode, Schedule schedule) {
   List<Notification> notifications = [];
   bool isDone = false;
   int numDays = 0;
@@ -175,23 +184,29 @@ List<Notification> _createDailyNotifications(String invitationCode, Schedule sch
   int validTimeBySlot = validTime ~/ schedule.numNotifications;
   int notificationCounter = 0;
 
-  while(!isDone) {
-    currentDate = currentDate.add(Duration(days:1));
+  while (!isDone) {
+    currentDate = currentDate.add(Duration(days: 1));
     if (schedule.scheduleWeekdays.contains((currentDate.weekday))) {
       numDays = numDays + 1;
       int previousHour = 0;
-      for(int i = 0; i < schedule.numNotifications; i++) {
+      for (int i = 0; i < schedule.numNotifications; i++) {
         notificationCounter++;
-         int slotStartTime;
+        int slotStartTime;
         if (i == 0) {
           slotStartTime = schedule.startTime + (i * validTimeBySlot);
         } else {
-          slotStartTime = max(schedule.startTime + (i * validTimeBySlot), previousHour + schedule.intervalHours);
+          slotStartTime = max(schedule.startTime + (i * validTimeBySlot),
+              previousHour + schedule.intervalHours);
         }
 
-        int hour = slotStartTime + _random.nextInt((slotStartTime + validTimeBySlot) - slotStartTime);
+        int hour = slotStartTime +
+            _random.nextInt((slotStartTime + validTimeBySlot) - slotStartTime);
         int minute = _random.nextInt(60);
-        Notification note = Notification(notificationId: int.parse(invitationCode) + notificationCounter, notificationTime: DateTime(currentDate.year, currentDate.month, currentDate.day, hour, minute) , notificationMessage: 'Time to do your Tatool Module!');
+        Notification note = Notification(
+            notificationId: int.parse(invitationCode) + notificationCounter,
+            notificationTime: DateTime(currentDate.year, currentDate.month,
+                currentDate.day, hour, minute),
+            notificationMessage: 'It\'s time for your Tatool Session!');
         notifications.add(note);
         previousHour = hour;
       }
@@ -202,4 +217,31 @@ List<Notification> _createDailyNotifications(String invitationCode, Schedule sch
     }
   }
   return notifications;
+}
+
+_scheduleNotifications(List<Notification> notifications) async {
+  for (int i = 0; i < notifications.length; i++) {
+    var scheduledNotificationDateTime = notifications[i].notificationTime;
+    var androidPlatformChannelSpecifics = new AndroidNotificationDetails(
+        'tatoolxp', 'Tatool XP', 'Tatool XP Notifications',
+        importance: Importance.Max, priority: Priority.High, ongoing: true);
+    var iOSPlatformChannelSpecifics = new IOSNotificationDetails();
+    var platformChannelSpecifics = new NotificationDetails(
+        androidPlatformChannelSpecifics, iOSPlatformChannelSpecifics);
+    await notificationPlugin.schedule(
+        notifications[i].notificationId,
+        'Tatool XP',
+        notifications[i].notificationMessage,
+        scheduledNotificationDateTime,
+        platformChannelSpecifics);
+  }
+
+  // one time demo notification
+  var androidPlatformChannelSpecifics = new AndroidNotificationDetails(
+        'tatoolxp', 'Tatool XP', 'Tatool XP Notifications',
+        importance: Importance.Max, priority: Priority.High, ongoing: true);
+    var iOSPlatformChannelSpecifics = new IOSNotificationDetails();
+    var platformChannelSpecifics = new NotificationDetails(
+        androidPlatformChannelSpecifics, iOSPlatformChannelSpecifics);
+  notificationPlugin.schedule(0, 'Tatool XP', 'It\'s time for your Tatool Session!', DateTime.now().add(Duration(seconds: 5)), platformChannelSpecifics);
 }

@@ -310,23 +310,6 @@ class _ModuleScreenState extends State<ModuleScreen> {
     );
   }
 
-  Future _showNotification() async {
-    var scheduledNotificationDateTime =
-        new DateTime.now().add(new Duration(seconds: 10));
-    var androidPlatformChannelSpecifics = new AndroidNotificationDetails(
-        'your channel id', 'your channel name', 'your channel description',
-        importance: Importance.Max, priority: Priority.High, ongoing: true);
-    var iOSPlatformChannelSpecifics = new IOSNotificationDetails();
-    var platformChannelSpecifics = new NotificationDetails(
-        androidPlatformChannelSpecifics, iOSPlatformChannelSpecifics);
-    await widget.notificationPlugin.schedule(
-        0,
-        'scheduled title',
-        'scheduled body',
-        scheduledNotificationDateTime,
-        platformChannelSpecifics);
-  }
-
   Future<bool> checkConnectivity() async {
     try {
       final result = await InternetAddress.lookup('google.com');

@@ -38,7 +38,7 @@ Future<Store<AppState>> createStore() async {
     initialState: AppState.initial(),
     middleware: []
       ..add(LoggingMiddleware.printer())
-      ..addAll(createModuleMiddleware()),
+      ..addAll(createModuleMiddleware(notificationPlugin)),
   );
 }
 
