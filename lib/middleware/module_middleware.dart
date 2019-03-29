@@ -153,6 +153,9 @@ Future<List<Module>> _dbDeleteModule(String userId, int index) async {
     modules = List<Map>.from(snapshot.data['modules']);
 
     if (snapshot.exists) {
+      Module module = Module.fromMap(Map<String, dynamic>.from(modules[index]));
+      await _cancelNotifications(module.notifications);
+
       modules.removeAt(index);
       await tx
           .update(snapshot.reference, <String, dynamic>{'modules': modules});
@@ -172,6 +175,11 @@ List<Notification> _createNotifications(
     notifications = _createDailyNotifications(invitationCode, schedule);
   }
   return notifications;
+}
+
+_cancelNotifications(List<Notification> notifications) async {
+  notifications.forEach((notification) => notificationPlugin.cancel(notification.notificationId));
+  notificationPlugin.cancel(0);
 }
 
 List<Notification> _createDailyNotifications(
@@ -224,7 +232,7 @@ _scheduleNotifications(List<Notification> notifications) async {
     var scheduledNotificationDateTime = notifications[i].notificationTime;
     var androidPlatformChannelSpecifics = new AndroidNotificationDetails(
         'tatoolxp', 'Tatool XP', 'Tatool XP Notifications',
-        importance: Importance.Max, priority: Priority.High, ongoing: true);
+        importance: Importance.Max, priority: Priority.High, ongoing: false, autoCancel: true);
     var iOSPlatformChannelSpecifics = new IOSNotificationDetails();
     var platformChannelSpecifics = new NotificationDetails(
         androidPlatformChannelSpecifics, iOSPlatformChannelSpecifics);
@@ -239,9 +247,9 @@ _scheduleNotifications(List<Notification> notifications) async {
   // one time demo notification
   var androidPlatformChannelSpecifics = new AndroidNotificationDetails(
         'tatoolxp', 'Tatool XP', 'Tatool XP Notifications',
-        importance: Importance.Max, priority: Priority.High, ongoing: true);
+        importance: Importance.Max, priority: Priority.High, ongoing: false, autoCancel: true);
     var iOSPlatformChannelSpecifics = new IOSNotificationDetails();
     var platformChannelSpecifics = new NotificationDetails(
         androidPlatformChannelSpecifics, iOSPlatformChannelSpecifics);
-  notificationPlugin.schedule(0, 'Tatool XP', 'It\'s time for your Tatool Session!', DateTime.now().add(Duration(seconds: 5)), platformChannelSpecifics);
+  notificationPlugin.schedule(0, 'Tatool XP', 'Module has been added successfully!', DateTime.now().add(Duration(seconds: 5)), platformChannelSpecifics);
 }
