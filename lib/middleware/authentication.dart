@@ -57,6 +57,7 @@ class Auth implements BaseAuth {
   }
 
   Future<String> _createTatoolUser(FirebaseUser fbUser) {
+
     final DocumentReference userRef =
         Firestore.instance.collection('users').document(fbUser.uid);
 
