@@ -10,6 +10,7 @@ import 'package:tatoolxp/presentation/module_view_model.dart';
 import 'package:tatoolxp/presentation/loading_indicator.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ModuleScreen extends StatefulWidget {
   final FlutterLocalNotificationsPlugin notificationPlugin;
@@ -40,6 +41,15 @@ class _ModuleScreenState extends State<ModuleScreen> {
       widget.onSignedOut();
     } catch (e) {
       print(e);
+    }
+  }
+
+  _launchPrivacyPolicy() async {
+    const url = 'https://www.tatool-web.com/#/doc/about-privacy-policy.html';
+    if (await canLaunch(url)) {
+      await launch(url);
+    } else {
+      throw 'Could not launch $url';
     }
   }
 
@@ -79,6 +89,13 @@ class _ModuleScreenState extends State<ModuleScreen> {
                 },
               ),
               Divider(),
+              ListTile(
+                leading: Icon(Icons.lock_outline),
+                title: Text('Privacy Policy'),
+                onTap: () {
+                  _launchPrivacyPolicy();
+                },
+              ),
               ListTile(
                 leading: Icon(Icons.cancel),
                 title: Text('Close'),
