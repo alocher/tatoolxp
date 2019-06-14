@@ -17,13 +17,13 @@ dependencies:
     sdk: flutter
   redux: ^3.0.0
   flutter_redux: ^0.5.3
-  firebase_auth: ^0.8.1+4
-  google_sign_in: ^4.0.1+1
+  firebase_auth: ^0.11.1+6
+  google_sign_in: ^4.0.2
   redux_logging: ^0.3.0
-  webview_flutter: ^0.3.3+1
-  flutter_local_notifications: ^0.5.2
-  cloud_firestore: ^0.9.5+2
-  url_launcher: ^5.0.2
+  webview_flutter: ^0.3.9+1
+  flutter_local_notifications: ^0.7.1+1
+  cloud_firestore: ^0.12.3
+  url_launcher: ^5.0.3
 
 
   # The following adds the Cupertino Icons font to your application.
@@ -34,7 +34,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
 
-  flutter_launcher_icons: "^0.7.0"
+  flutter_launcher_icons: "^0.7.2"
 
 flutter_icons:
   android: "launcher_icon" 

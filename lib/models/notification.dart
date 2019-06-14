@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:meta/meta.dart';
 
 @immutable
@@ -12,7 +13,7 @@ class Notification {
   Notification.fromMap(Map<String, dynamic> data)
       : this(
           notificationId: data['notificationId'],
-          notificationTime: data['notificationTime'],
+          notificationTime: parseTime(data['notificationTime']),
           notificationMessage: data['notificationMessage'],
         );
 
@@ -22,12 +23,17 @@ class Notification {
         'notificationMessage': this.notificationMessage,
       };
 
+  static DateTime parseTime(dynamic date) {
+    return (date is DateTime) ? date : (date as Timestamp).toDate();
+    //return Platform.isIOS ? (date as Timestamp).toDate() : (date as DateTime);
+  }
+
   String toString() {
     return 'notificationId: ' +
         this.notificationId.toString() +
         ', notificationTime: ' +
         this.notificationTime.toString();
-        /*', notificationMessage: ' +
+    /*', notificationMessage: ' +
         this.notificationMessage.toString();*/
   }
 }
