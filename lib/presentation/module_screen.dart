@@ -356,9 +356,10 @@ class TatoolWebView extends StatelessWidget {
         this.moduleId +
         '?extid=' +
         this.tatoolId;
-    print(url);
 
     //url = 'https://material-components.github.io/material-components-web-catalog/#/component/select';
+    //url = 'https://www.w3schools.com/html/html_forms.asp';
+    //url = 'https://www.w3.org/Style/Examples/007/center-example.en.html';
 
     return Container(
         child: WebView(
